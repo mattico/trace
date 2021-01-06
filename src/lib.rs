@@ -338,16 +338,14 @@ fn construct_traced_block(
 
     let pause_stmt = if args.pause {
         quote! {{
-            use std::io::{self, BufRead};
-            let stdin = io::stdin();
-            stdin.lock().lines().next();
+            cortex_m::asm::bkpt();
         }}
     } else {
         quote!()
     };
 
     let printer = if args.logging {
-        quote! { log::trace! }
+        quote! { defmt::trace! }
     } else {
         quote! { println! }
     };
