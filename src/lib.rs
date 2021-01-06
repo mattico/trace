@@ -324,11 +324,11 @@ fn construct_traced_block(
 
     let pretty = if args.pretty { "#" } else { "" };
     let entering_format = format!(
-        "{{:depth$}}{} Entering {}({})",
+        "D{{:usize}}{} Entering {}({})",
         args.prefix_enter, sig.ident, arg_idents_format
     );
     let exiting_format = format!(
-        "{{:depth$}}{} Exiting {} = {{:{}?}}",
+        "D{{:usize}}{} Exiting {} = {{:{}?}}",
         args.prefix_exit, sig.ident, pretty
     );
 
@@ -343,13 +343,13 @@ fn construct_traced_block(
     let printer = quote! { defmt::trace! };
 
     parse_quote! {{
-        #printer(#entering_format, "", #(#arg_idents,)* depth = DEPTH.get());
+        #printer(#entering_format, DEPTH.get(), "", #(#arg_idents,)*);
         #pause_stmt
         DEPTH.set(DEPTH.get() + 1);
         let mut fn_closure = move || #original_block;
         let fn_return_value = fn_closure();
         DEPTH.set(DEPTH.get() - 1);
-        #printer(#exiting_format, "", fn_return_value, depth = DEPTH.get());
+        #printer(#exiting_format, DEPTH.get(), "", fn_return_value);
         #pause_stmt
         fn_return_value
     }}
