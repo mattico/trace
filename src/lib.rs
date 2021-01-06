@@ -344,11 +344,7 @@ fn construct_traced_block(
         quote!()
     };
 
-    let printer = if args.logging {
-        quote! { defmt::trace! }
-    } else {
-        quote! { println! }
-    };
+    let printer = quote! { defmt::trace! };
 
     parse_quote! {{
         #printer(#entering_format, "", #(#arg_idents,)* depth = DEPTH.with(|d| d.get()));
