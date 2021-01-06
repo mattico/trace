@@ -324,11 +324,11 @@ fn construct_traced_block(
 
     let pretty = if args.pretty { "#" } else { "" };
     let entering_format = format!(
-        "D{{:usize}}{} Entering {}({})",
+        "D{{=usize}}{} Entering {}({})",
         args.prefix_enter, sig.ident, arg_idents_format
     );
     let exiting_format = format!(
-        "D{{:usize}}{} Exiting {} = {{:{}?}}",
+        "D{{=usize}}{} Exiting {} = {{:{}?}}",
         args.prefix_exit, sig.ident, pretty
     );
 
