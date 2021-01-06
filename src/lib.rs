@@ -343,13 +343,13 @@ fn construct_traced_block(
     let printer = quote! { defmt::trace! };
 
     parse_quote! {{
-        #printer(#entering_format, DEPTH.get(), "", #(#arg_idents,)*);
+        #printer(#entering_format, DEPTH.get(), #(#arg_idents,)*);
         #pause_stmt
         DEPTH.set(DEPTH.get() + 1);
         let mut fn_closure = move || #original_block;
         let fn_return_value = fn_closure();
         DEPTH.set(DEPTH.get() - 1);
-        #printer(#exiting_format, DEPTH.get(), "", fn_return_value);
+        #printer(#exiting_format, DEPTH.get(), fn_return_value);
         #pause_stmt
         fn_return_value
     }}
