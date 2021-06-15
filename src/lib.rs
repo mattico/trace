@@ -97,7 +97,9 @@ use syn::{
 pub fn init_depth_var(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let output = if input.is_empty() {
         quote! {
-            static DEPTH: ::core::cell::Cell<usize> = ::core::cell::Cell::new(0);
+            ::std::thread_local! {
+                static DEPTH: ::std::cell::Cell<usize> = ::std::cell::Cell::new(0);
+            }
         }
     } else {
         let input2 = proc_macro2::TokenStream::from(input);
@@ -248,7 +250,9 @@ fn transform_mod(args: &args::Args, attr_applied: AttrApplied, item_mod: &mut sy
         items.insert(
             0,
             parse_quote! {
-                static DEPTH: ::core::cell::Cell<usize> = ::core::cell::Cell::new(0);
+                ::std::thread_local! {
+                    static DEPTH: ::std::cell::Cell<usize> = ::std::cell::Cell::new(0);
+                }
             },
         );
     }
@@ -315,36 +319,75 @@ fn construct_traced_block(
     sig: &syn::Signature,
     original_block: &syn::Block,
 ) -> syn::Block {
-    let entering_format = format!(
-        "D{{=usize}}{} Entering {}()",
-        args.prefix_enter, sig.ident
-    );
-    let exiting_format = format!(
-        "D{{=usize}}{} Exiting {}",
-        args.prefix_exit, sig.ident
-    );
+    if args.args {
+        let arg_idents = extract_arg_idents(args, attr_applied, &sig);
+        let arg_idents_format = arg_idents
+            .iter()
+            .map(|arg_ident| format!("{} = {{:?}}", arg_ident))
+            .collect::<Vec<_>>()
+            .join(", ");
 
-    let pause_stmt = if args.pause {
-        quote! {{
-            cortex_m::asm::bkpt();
+        let pretty = if args.pretty { "#" } else { "" };
+        let entering_format = format!(
+            "{} Entering {}({})",
+            args.prefix_enter, sig.ident, arg_idents_format
+        );
+        let exiting_format = format!(
+            "{} Exiting {} = {{:{}?}}",
+            args.prefix_exit, sig.ident, pretty
+        );
+
+        let pause_stmt = if args.pause {
+            quote! {{
+                use std::io::{self, BufRead};
+                let stdin = io::stdin();
+                stdin.lock().lines().next();
+            }}
+        } else {
+            quote!()
+        };
+
+        let printer = quote! { defmt::trace! };
+
+        parse_quote! {{
+            #printer(#entering_format, #(#arg_idents,)*);
+            #pause_stmt
+            let mut fn_closure = move || #original_block;
+            let fn_return_value = fn_closure();
+            #printer(#exiting_format, fn_return_value);
+            #pause_stmt
+            fn_return_value
         }}
     } else {
-        quote!()
-    };
+        let pretty = if args.pretty { "#" } else { "" };
+        let entering_format = format!("{} Entering {}()", args.prefix_enter, sig.ident);
+        let exiting_format = format!(
+            "{} Exiting {} = {{:{}?}}",
+            args.prefix_exit, sig.ident, pretty
+        );
 
-    let printer = quote! { defmt::trace! };
+        let pause_stmt = if args.pause {
+            quote! {{
+                use std::io::{self, BufRead};
+                let stdin = io::stdin();
+                stdin.lock().lines().next();
+            }}
+        } else {
+            quote!()
+        };
 
-    parse_quote! {{
-        #printer(#entering_format, DEPTH.get());
-        #pause_stmt
-        DEPTH.set(DEPTH.get() + 1);
-        let mut fn_closure = move || #original_block;
-        let fn_return_value = fn_closure();
-        DEPTH.set(DEPTH.get() - 1);
-        #printer(#exiting_format, DEPTH.get());
-        #pause_stmt
-        fn_return_value
-    }}
+        let printer = quote! { defmt::trace! };
+
+        parse_quote! {{
+            #printer(#entering_format);
+            #pause_stmt
+            let mut fn_closure = move || #original_block;
+            let fn_return_value = fn_closure();
+            #printer(#exiting_format, fn_return_value);
+            #pause_stmt
+            fn_return_value
+        }}
+    }
 }
 
 fn extract_arg_idents(

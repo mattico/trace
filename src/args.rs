@@ -9,6 +9,7 @@ pub(crate) struct Args {
     pub(crate) pause: bool,
     pub(crate) pretty: bool,
     pub(crate) logging: bool,
+    pub(crate) args: bool,
 }
 
 pub(crate) enum Filter {
@@ -22,6 +23,7 @@ const DEFAULT_PREFIX_EXIT: &str = "[-]";
 const DEFAULT_PAUSE: bool = false;
 const DEFAULT_PRETTY: bool = false;
 const DEFAULT_LOGGING: bool = false;
+const DEFAULT_ARGS: bool = false;
 
 impl Args {
     pub(crate) fn from_raw_args(raw_args: syn::AttributeArgs) -> Result<Self, Vec<syn::Error>> {
@@ -35,6 +37,7 @@ impl Args {
             Pause(proc_macro2::Span, bool),
             Pretty(proc_macro2::Span, bool),
             Logging(proc_macro2::Span, bool),
+            Args(proc_macro2::Span, bool),
         }
 
         // Parse arguments
@@ -48,6 +51,7 @@ impl Args {
                     Pause,
                     Pretty,
                     Logging,
+                    Args,
                 }
 
                 let ident = &meta.path().segments.first().unwrap().ident;
@@ -59,6 +63,7 @@ impl Args {
                     "pause" => ArgName::Pause,
                     "pretty" => ArgName::Pretty,
                     "logging" => ArgName::Logging,
+                    "args" => ArgName::Args,
                     _ => {
                         return Err(vec![syn::Error::new_spanned(
                             ident.clone(),
@@ -109,12 +114,19 @@ impl Args {
                         "`logging` must be a meta word",
                     )]
                 };
+                let args_type_error = || {
+                    vec![syn::Error::new_spanned(
+                        ident.clone(),
+                        "`args` must be a meta word",
+                    )]
+                };
 
                 match *meta {
                     syn::Meta::Path(_) => match arg_name {
                         ArgName::Pause => Ok(Arg::Pause(meta.span(), true)),
                         ArgName::Pretty => Ok(Arg::Pretty(meta.span(), true)),
                         ArgName::Logging => Ok(Arg::Logging(meta.span(), true)),
+                        ArgName::Args => Ok(Arg::Args(meta.span(), true)),
 
                         ArgName::PrefixEnter => Err(prefix_enter_type_error()),
                         ArgName::PrefixExit => Err(prefix_exit_type_error()),
@@ -172,6 +184,7 @@ impl Args {
                         ArgName::Pause => Err(pause_type_error()),
                         ArgName::Pretty => Err(pretty_type_error()),
                         ArgName::Logging => Err(logging_type_error()),
+                        ArgName::Args => Err(args_type_error()),
                     },
                     syn::Meta::NameValue(syn::MetaNameValue { ref lit, .. }) => match arg_name {
                         ArgName::PrefixEnter => match *lit {
@@ -198,6 +211,7 @@ impl Args {
                         ArgName::Pause => Err(pause_type_error()),
                         ArgName::Pretty => Err(pretty_type_error()),
                         ArgName::Logging => Err(logging_type_error()),
+                        ArgName::Args => Err(args_type_error()),
                     },
                 }
             }
@@ -214,6 +228,7 @@ impl Args {
         let mut pause_args = vec![];
         let mut pretty_args = vec![];
         let mut logging_args = vec![];
+        let mut args_args = vec![];
         let mut errors = vec![];
 
         // Group arguments of the same type and errors
@@ -227,6 +242,7 @@ impl Args {
                     Arg::Pause(span, b) => pause_args.push((span, b)),
                     Arg::Pretty(span, b) => pretty_args.push((span, b)),
                     Arg::Logging(span, b) => logging_args.push((span, b)),
+                    Arg::Args(span, b) => args_args.push((span, b)),
                 },
                 Err(es) => errors.extend(es),
             }
@@ -282,6 +298,13 @@ impl Args {
                     .map(|(span, _)| syn::Error::new(*span, "duplicate `logging`")),
             );
         }
+        if args_args.len() >= 2 {
+            errors.extend(
+                args_args
+                    .iter()
+                    .map(|(span, _)| syn::Error::new(*span, "duplicate `args`")),
+            );
+        }
 
         // Report the presence of mutually exclusive arguments
         if enable_args.len() == 1 && disable_args.len() == 1 {
@@ -315,6 +338,7 @@ impl Args {
             let pause = first_no_span!(pause_args).unwrap_or(DEFAULT_PAUSE);
             let pretty = first_no_span!(pretty_args).unwrap_or(DEFAULT_PRETTY);
             let logging = first_no_span!(logging_args).unwrap_or(DEFAULT_LOGGING);
+            let args = first_no_span!(args_args).unwrap_or(DEFAULT_ARGS);
 
             Ok(Self {
                 prefix_enter,
@@ -323,6 +347,7 @@ impl Args {
                 pause,
                 pretty,
                 logging,
+                args,
             })
         } else {
             Err(errors)
