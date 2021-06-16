@@ -330,10 +330,10 @@ fn construct_traced_block(
 
         let pretty = if args.pretty { "#" } else { "" };
         let entering_format = format!(
-            "{} Entering {}({})",
+            "{} p={{}} Entering {}({})",
             args.prefix_enter, fname, arg_idents_format
         );
-        let exiting_format = format!("{} Exiting {} = {{:{}?}}", args.prefix_exit, fname, pretty);
+        let exiting_format = format!("{} p={{}} Exiting {} = {{:{}?}}", args.prefix_exit, fname, pretty);
 
         let pause_stmt = if args.pause {
             quote! {{
@@ -348,17 +348,18 @@ fn construct_traced_block(
         let printer = quote! { defmt::trace! };
 
         parse_quote! {{
-            #printer(#entering_format, #(#arg_idents,)*);
+            let priority = crate::utils::current_priority();
+            #printer(#entering_format, priority, #(#arg_idents,)*);
             #pause_stmt
             let mut fn_closure = move || #original_block;
             let fn_return_value = fn_closure();
-            #printer(#exiting_format, fn_return_value);
+            #printer(#exiting_format, priority, fn_return_value);
             #pause_stmt
             fn_return_value
         }}
     } else {
-        let entering_format = format!("{} Entering {}()", args.prefix_enter, fname);
-        let exiting_format = format!("{} Exiting {}", args.prefix_exit, fname);
+        let entering_format = format!("{} p={{}} Entering {}()", args.prefix_enter, fname);
+        let exiting_format = format!("{} p={{}} Exiting {}", args.prefix_exit, fname);
 
         let pause_stmt = if args.pause {
             quote! {{
@@ -373,11 +374,12 @@ fn construct_traced_block(
         let printer = quote! { defmt::trace! };
 
         parse_quote! {{
-            #printer(#entering_format);
+            let priority = crate::utils::current_priority();
+            #printer(#entering_format, priority);
             #pause_stmt
             let mut fn_closure = move || #original_block;
             let fn_return_value = fn_closure();
-            #printer(#exiting_format);
+            #printer(#exiting_format, priority);
             #pause_stmt
             fn_return_value
         }}
