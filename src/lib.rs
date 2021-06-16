@@ -319,6 +319,7 @@ fn construct_traced_block(
     sig: &syn::Signature,
     original_block: &syn::Block,
 ) -> syn::Block {
+    let fname = args.name.clone().unwrap_or(sig.ident.to_string());
     if args.args {
         let arg_idents = extract_arg_idents(args, attr_applied, &sig);
         let arg_idents_format = arg_idents
@@ -330,12 +331,9 @@ fn construct_traced_block(
         let pretty = if args.pretty { "#" } else { "" };
         let entering_format = format!(
             "{} Entering {}({})",
-            args.prefix_enter, sig.ident, arg_idents_format
+            args.prefix_enter, fname, arg_idents_format
         );
-        let exiting_format = format!(
-            "{} Exiting {} = {{:{}?}}",
-            args.prefix_exit, sig.ident, pretty
-        );
+        let exiting_format = format!("{} Exiting {} = {{:{}?}}", args.prefix_exit, fname, pretty);
 
         let pause_stmt = if args.pause {
             quote! {{
@@ -359,12 +357,8 @@ fn construct_traced_block(
             fn_return_value
         }}
     } else {
-        let pretty = if args.pretty { "#" } else { "" };
-        let entering_format = format!("{} Entering {}()", args.prefix_enter, sig.ident);
-        let exiting_format = format!(
-            "{} Exiting {} = {{:{}?}}",
-            args.prefix_exit, sig.ident, pretty
-        );
+        let entering_format = format!("{} Entering {}()", args.prefix_enter, fname);
+        let exiting_format = format!("{} Exiting {}", args.prefix_exit, fname);
 
         let pause_stmt = if args.pause {
             quote! {{
