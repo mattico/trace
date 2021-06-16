@@ -377,7 +377,7 @@ fn construct_traced_block(
             #pause_stmt
             let mut fn_closure = move || #original_block;
             let fn_return_value = fn_closure();
-            #printer(#exiting_format, fn_return_value);
+            #printer(#exiting_format);
             #pause_stmt
             fn_return_value
         }}
