@@ -330,10 +330,13 @@ fn construct_traced_block(
 
         let pretty = if args.pretty { "#" } else { "" };
         let entering_format = format!(
-            "{} p={{}} Entering {}({})",
+            "{} p={{=u8}} Entering {}({})",
             args.prefix_enter, fname, arg_idents_format
         );
-        let exiting_format = format!("{} p={{}} Exiting {} = {{:{}?}}", args.prefix_exit, fname, pretty);
+        let exiting_format = format!(
+            "{} p={{=u8}} Exiting {} = {{:{}?}}",
+            args.prefix_exit, fname, pretty
+        );
 
         let pause_stmt = if args.pause {
             quote! {{
@@ -358,8 +361,8 @@ fn construct_traced_block(
             fn_return_value
         }}
     } else {
-        let entering_format = format!("{} p={{}} Entering {}()", args.prefix_enter, fname);
-        let exiting_format = format!("{} p={{}} Exiting {}", args.prefix_exit, fname);
+        let entering_format = format!("{} p={{=u8}} Entering {}()", args.prefix_enter, fname);
+        let exiting_format = format!("{} p={{=u8}} Exiting {}", args.prefix_exit, fname);
 
         let pause_stmt = if args.pause {
             quote! {{
