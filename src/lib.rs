@@ -351,7 +351,7 @@ fn construct_traced_block(
         let printer = quote! { defmt::trace! };
 
         parse_quote! {{
-            let priority = crate::utils::current_priority();
+            let priority = crate::priority::current_priority();
             #printer(#entering_format, priority, #(#arg_idents,)*);
             #pause_stmt
             let mut fn_closure = move || #original_block;
@@ -377,7 +377,7 @@ fn construct_traced_block(
         let printer = quote! { defmt::trace! };
 
         parse_quote! {{
-            let priority = crate::utils::current_priority();
+            let priority = crate::priority::current_priority();
             #printer(#entering_format, priority);
             #pause_stmt
             let mut fn_closure = move || #original_block;
